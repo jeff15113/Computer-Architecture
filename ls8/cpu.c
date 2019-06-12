@@ -98,6 +98,16 @@ void cpu_run(struct cpu *cpu)
 		unsigned char op2 = cpu_ram_read(cpu, cpu->program_counter + 2);
 
 		switch(instruction){
+		case PUSH:
+			cpu->registers[7]--;
+			cpu_ram_write(cpu, cpu->registers[7], cpu->registers[op1]);
+			break;
+
+		case POP:
+			cpu->registers[op1] = cpu_ram_read(cpu, cpu->registers[7]);
+			cpu->registers[7]++;
+			break;
+
 		case LDI:
 			cpu->registers[op1] = op2;
 			break;
@@ -125,7 +135,9 @@ void cpu_run(struct cpu *cpu)
 void cpu_init(struct cpu *cpu)
 {
 	// TODO: Initialize the PC and other special registers
+
 	cpu->program_counter = 0;
 	memset(cpu->ram, 0, sizeof cpu->ram);
 	memset(cpu->registers, 0, sizeof cpu->registers);
+	cpu->registers[7] = 0xF4;
 }
