@@ -1,10 +1,25 @@
 #include "cpu.h"
+#include <string.h>
+#include <stdio.h>
 
 #define DATA_LEN 6
 
 /**
+ * cpu-ram-read/write functions
+ */
+
+unsigned char cpu_ram_read(struct cpu *cpu, unsigned char address){
+	return cpu->ram[address];
+}
+
+void cpu_ram_write(struct cpu *cpu, unsigned char address, unsigned char value){
+	cpu->ram[address] = value;
+}
+
+/**
  * Load the binary bytes from a .ls8 source file into a RAM array
  */
+
 void cpu_load(struct cpu *cpu)
 {
   char data[DATA_LEN] = {
@@ -55,6 +70,31 @@ void cpu_run(struct cpu *cpu)
     // 4. switch() over it to decide on a course of action.
     // 5. Do whatever the instruction should do according to the spec.
     // 6. Move the PC to the next instruction.
+	  unsigned char instruction = cpu_ram_read(cpu, cpu->program_counter);
+	  int num_operands = instruction >> 6;
+//	  unsigned char op_arr[num_operands];
+
+//	  for(int i; i >= num_operands; i++){
+//		  op_arr[i] = cpu_ram_read(cpu, cpu->program_counter + i);
+//	  }
+	  unsigned char op1 = cpu_ram_read(cpu, cpu->program_counter + 1);
+	  unsigned char op2 = cpu_ram_read(cpu, cpu->program_counter + 2);
+
+	  switch(instruction){
+	  case LDI:
+		  cpu->registers[op1] = op2;
+		  break;
+
+	  case PRN:
+          printf("%d\n", cpu->registers[op1]);
+          break;
+
+	  case HLT:
+		  running = 0;
+		  break;
+	  }
+
+	  cpu->program_counter = cpu->program_counter + num_operands + 1;
   }
 }
 
@@ -64,4 +104,7 @@ void cpu_run(struct cpu *cpu)
 void cpu_init(struct cpu *cpu)
 {
   // TODO: Initialize the PC and other special registers
+	cpu->program_counter = 0;
+	memset(cpu->ram, 0, sizeof cpu->ram);
+	memset(cpu->registers, 0, sizeof cpu->registers);
 }
