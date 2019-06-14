@@ -70,6 +70,14 @@ void alu(struct cpu *cpu, enum alu_op op, unsigned char regA, unsigned char regB
 		cpu->registers[regA] = cpu->registers[regA] + cpu->registers[regB];
 		break;
 
+	case ALU_CMP:
+		if(cpu->registers[regA] > cpu->registers[regB])
+			cpu->flags = 0b00000100;
+		else if(cpu->registers[regA] < cpu->registers[regB])
+			cpu->flags = 0b00000010;
+		else if(cpu->registers[regA] == cpu->registers[regB])
+			cpu->flags = 0b00000001;
+		break;
 	}
 }
 
@@ -91,6 +99,10 @@ void cpu_run(struct cpu *cpu)
 		unsigned char instruction = cpu_ram_read(cpu, cpu->program_counter);
 		int num_operands = instruction >> 6;
 		int setsPC = instruction >> 4 & 0b0001;
+		int L = cpu->flags & 0b00000100 >> 2;
+		int G = cpu->flags & 0b00000010 >> 1;
+		int E = cpu->flags & 0b00000001;
+
 
 		//	  unsigned char op_arr[num_operands];
 
@@ -142,7 +154,59 @@ void cpu_run(struct cpu *cpu)
 		case HLT:
 			running = 0;
 			break;
+
+		case JEQ:
+			if (E)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JGE:
+			if (G||E)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JGT:
+			if (G)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JLE:
+			if (L||E)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JLT:
+			if (L)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JNE:
+			if (!E)
+				cpu->program_counter = cpu->registers[op1];
+			else
+				cpu->program_counter += 2;
+			break;
+
+		case JMP:
+			cpu->program_counter = cpu->registers[op1];
+
+			break;
+
+		case CMP:
+			alu(cpu, ALU_CMP, op1, op2);
+			break;
 		}
+
 		if(!setsPC)
 			cpu->program_counter = cpu->program_counter + num_operands + 1;
 	}
@@ -156,6 +220,7 @@ void cpu_init(struct cpu *cpu)
 	// TODO: Initialize the PC and other special registers
 
 	cpu->program_counter = 0;
+	cpu->flags = 0b00000000;
 	memset(cpu->ram, 0, sizeof cpu->ram);
 	memset(cpu->registers, 0, sizeof cpu->registers);
 	cpu->registers[7] = 0xF4;
