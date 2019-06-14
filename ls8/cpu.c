@@ -62,13 +62,14 @@ void alu(struct cpu *cpu, enum alu_op op, unsigned char regA, unsigned char regB
 {
 	switch (op) {
 	case ALU_MUL:
-		; //This is to get around a C quirk
-		int num = cpu->registers[regA] * cpu->registers[regB];
-		cpu->registers[regB] = 0;
-		cpu->registers[regA] = num;
+		cpu->registers[regA] = cpu->registers[regA] * cpu->registers[regB];
 		break;
 
 		// TODO: implement more ALU ops
+	case ALU_ADD:
+		cpu->registers[regA] = cpu->registers[regA] + cpu->registers[regB];
+		break;
+
 	}
 }
 
@@ -89,6 +90,8 @@ void cpu_run(struct cpu *cpu)
 		// 6. Move the PC to the next instruction.
 		unsigned char instruction = cpu_ram_read(cpu, cpu->program_counter);
 		int num_operands = instruction >> 6;
+		int setsPC = instruction >> 4 & 0b0001;
+
 		//	  unsigned char op_arr[num_operands];
 
 		//	  for(int i; i >= num_operands; i++){
@@ -96,8 +99,20 @@ void cpu_run(struct cpu *cpu)
 		//	  }
 		unsigned char op1 = cpu_ram_read(cpu, cpu->program_counter + 1);
 		unsigned char op2 = cpu_ram_read(cpu, cpu->program_counter + 2);
-
+		//printf("Sets instruction pointer: %d \n",setsPC);
 		switch(instruction){
+		case CALL:
+			cpu->registers[7]--;
+			cpu_ram_write(cpu, cpu->registers[7], cpu->program_counter + 2);
+
+			cpu->program_counter = cpu->registers[op1];
+			break;
+
+		case RET:
+			cpu->program_counter = cpu_ram_read(cpu, cpu->registers[7]);
+			cpu->registers[7]++;
+			break;
+
 		case PUSH:
 			cpu->registers[7]--;
 			cpu_ram_write(cpu, cpu->registers[7], cpu->registers[op1]);
@@ -116,6 +131,10 @@ void cpu_run(struct cpu *cpu)
 			alu(cpu, ALU_MUL, op1, op2);
 			break;
 
+		case ADD:
+			alu(cpu, ALU_ADD, op1, op2);
+			break;
+
 		case PRN:
 			printf("%d\n", cpu->registers[op1]);
 			break;
@@ -124,8 +143,8 @@ void cpu_run(struct cpu *cpu)
 			running = 0;
 			break;
 		}
-
-		cpu->program_counter = cpu->program_counter + num_operands + 1;
+		if(!setsPC)
+			cpu->program_counter = cpu->program_counter + num_operands + 1;
 	}
 }
 
